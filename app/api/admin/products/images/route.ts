@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { put } from '@vercel/blob';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,25 +29,30 @@ export async function POST(request: NextRequest) {
     const fileExtension = file.name.split('.').pop();
     const fileName = `${uuidv4()}.${fileExtension}`;
     
-    // Create uploads directory if it doesn't exist
+    // If Vercel Blob is configured, upload there (works on Vercel)
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const blobKey = `uploads/products/${fileName}`;
+      const { url } = await put(blobKey, file, {
+        access: 'public',
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      });
+      return NextResponse.json({ 
+        url,
+        fileName: fileName,
+        size: file.size,
+        type: file.type
+      });
+    }
+
+    // Fallback: save to local filesystem (for local dev)
     const uploadsDir = join(process.cwd(), 'public', 'uploads', 'products');
     await mkdir(uploadsDir, { recursive: true });
-    
-    // Save file
     const filePath = join(uploadsDir, fileName);
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
-    
-    // Return the public URL
     const publicUrl = `/uploads/products/${fileName}`;
-    
-    return NextResponse.json({ 
-      url: publicUrl,
-      fileName: fileName,
-      size: file.size,
-      type: file.type
-    });
+    return NextResponse.json({ url: publicUrl, fileName, size: file.size, type: file.type });
     
   } catch (error) {
     console.error('Error uploading image:', error);

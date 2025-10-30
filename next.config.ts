@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "picsum.photos" },
       { protocol: "https", hostname: "cdn.pixabay.com" },
+      // Allow Vercel Blob public storage domains
+      { protocol: "https", hostname: "**.vercel-storage.com" },
     ],
   },
 };
